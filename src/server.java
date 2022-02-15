@@ -6,6 +6,7 @@ public class server {
     public static void main(String[] args) // args include n_port
     {
         System.out.print("Hello World.");
+        int port = Integer.parseInt(args[0]);
         // negotiation();
 
         /* for loop to iterate

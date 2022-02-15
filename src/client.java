@@ -2,14 +2,31 @@
 // Email: img56@msstate.edu
 // Student ID: 902-268-372
 
+import java.io.IOException;
+import java.nio.file.*;
+import java.util.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 public class client {
     public static void main(String[] args) // args include serverip, n_port, file
     {
         System.out.print("Hello World.");
+        try {
+            final InetAddress serverip = InetAddress.getByName(args[0]);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+        int n_port = Integer.parseInt(args[1]);
+        Path path = FileSystems.getDefault().getPath(args[2]);
+
         // negotiation();
+        // convert();
 
         /* for loop to iterate
-        extract();
+        grab next 4 8-bit ASCII chars from List
         transaction();
         if finished, send EOF
         wait for server to acknowledge
@@ -24,12 +41,23 @@ public class client {
         // once handshake complete, close negotiation socket
         return 0;
     }
-    String extract(Object file, int position) {
-        String chars = "";
-        // extract 4 characters from file and return
-        return chars;
+    List<String> convert(Path path) { // Convert file to List of 4 char 8-bit ASCII
+        List<String> list = new ArrayList<>();
+        String message = null;
+
+        try {
+            message = Files.readString(path);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        for (int i = 0; i < Objects.requireNonNull(message).length(); i += 4) {
+            list.add((message.substring(i, Math.min(i + 4, message.length()))));
+        }
+
+        return list;
     }
-    void transaction(String chars, String serverip, String r_port) {
+    void transaction(List<String> list, String serverip, String r_port) {
         // pack 4 characters into UDP packet
         // send over random port and serverip
         // send EOF at end of file
