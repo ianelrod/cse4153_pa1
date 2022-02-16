@@ -3,12 +3,11 @@
 // Student ID: 902-268-372
 
 import java.io.IOException;
+import java.net.*;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 public class client {
     public static void main(String[] args) // args include serverip, n_port, file
@@ -35,12 +34,40 @@ public class client {
 
         // terminate
     }
-    int negotiation(String serverip, String n_port) {
+    int negotiation(int n_port, InetAddress serverip) {
         // send the characters 1248 to initiate a handshake
         // receive r_port between 1024 and 65535 from server
         // once handshake complete, close negotiation socket
-        return 0;
+        DatagramSocket dsocket = null;
+        try {
+            dsocket = new DatagramSocket(n_port, serverip);
+        } catch (SocketException e) {
+            System.out.println("Could not create socket.");
+            e.printStackTrace();
+        }
+
+        byte[] send = ByteBuffer.allocate(Integer.BYTES).putInt(1248).array();
+        DatagramPacket dsend = new DatagramPacket(send, send.length, serverip, n_port);
+        try {
+            dsocket.send(dsend);
+        } catch (IOException e) {
+            System.out.println("Could not send handshake.");
+            e.printStackTrace();
+        }
+
+        byte[] receive = new byte[Integer.BYTES];
+        DatagramPacket dreceive = new DatagramPacket(receive, receive.length);
+        try {
+            dsocket.receive(dreceive);
+        } catch (IOException e) {
+            System.out.println("Could not receive port.");
+            e.printStackTrace();
+        }
+
+        int r_port = ByteBuffer.allocate(Integer.BYTES).put(dreceive.getData()).getInt();
+        return r_port;
     }
+
     List<String> convert(Path path) { // Convert file to List of 4 char 8-bit ASCII
         List<String> list = new ArrayList<>();
         String message = null;
