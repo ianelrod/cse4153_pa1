@@ -4,20 +4,17 @@
 
 import java.io.IOException;
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @SuppressWarnings("SpellCheckingInspection")
 public class client {
     public static void main(String[] args) // args include serverip, n_port, file
     {
-        System.out.print("Hello World.");
+        System.out.println("Hello World.");
 
         // declare variable and parse args
         InetAddress serverip = null;
@@ -28,7 +25,7 @@ public class client {
             e.printStackTrace();
         }
         int n_port = Integer.parseInt(args[1]);
-        Path path = FileSystems.getDefault().getPath(args[2]);
+        Path path = FileSystems.getDefault().getPath("src",args[2]);
 
         // get r_port
         int r_port = negotiation(n_port, serverip);
@@ -91,24 +88,27 @@ public class client {
 
             // send handshake
             try {
-                byte[] send = ByteBuffer.allocate(Integer.BYTES).putInt(1248).array();
+                byte[] send = HexFormat.of().parseHex("000004E0");
                 DatagramPacket dsend = new DatagramPacket(send, send.length, serverip, n_port);
-                byte[] receive = new byte[Integer.BYTES];
+                byte[] receive = HexFormat.of().parseHex("000004E0");
                 DatagramPacket dreceive = new DatagramPacket(receive, receive.length);
 
-                while (dreceive.getData() == null) {
+                while (Arrays.toString(dreceive.getData()).equals("[0, 0, 4, -32]")) {
                     System.out.println("Sending handshake: 1248");
                     dsocket.send(dsend);
 
                     // receive r_port packet between 1024 and 65535 from server
                     try {
                         dsocket.receive(dreceive);
-                        if (dreceive.getData() != null) {
+                        dreceive.setData(HexFormat.of().parseHex("00001000"));              // change later
+                        if (!Arrays.toString(dreceive.getData()).equals("[0, 0, 4, -32]")) {
                             String s = new String(dreceive.getData());
                             System.out.println("Received random port: " + s);
 
-                            // map packet to r_port, close, and return
-                            r_port = ByteBuffer.allocate(Integer.BYTES).put(dreceive.getData()).getInt();
+                            // map packet to r_port
+                            for (byte b : dreceive.getData()) {
+                                r_port = (r_port << 8) + (b & 0xFF);
+                            }
                         }
                     } catch (IOException e) {
                         System.out.println("Could not receive port.");
@@ -124,11 +124,13 @@ public class client {
                 System.out.println("Could not send handshake.");
                 e.printStackTrace();
             }
+            // close socket
             dsocket.close();
         } catch (SocketException e) {
             System.out.println("Could not create socket.");
             e.printStackTrace();
         }
+        // return r_port
         return r_port;
     }
 
@@ -139,7 +141,7 @@ public class client {
         // read message from file
         try {
             System.out.println("Reading message from file...");
-            message = Files.readString(path);
+            message = Files.readString(path.toAbsolutePath());
         } catch (IOException e) {
             System.out.println("Could not read message from file.");
             e.printStackTrace();
