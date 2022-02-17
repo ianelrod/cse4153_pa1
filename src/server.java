@@ -2,11 +2,11 @@
 // Email: img56@msstate.edu
 // Student ID: 902-268-372
 
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -57,6 +57,7 @@ public class server {
         }
     }
 
+    // generate random port between low (inclusive) and high (exclusive)
     private static int genRandomPort() {
         Random r = new Random();
         int low = 1024;
@@ -64,14 +65,15 @@ public class server {
         return r.nextInt(high-low) + low;
     }
 
+    // wait for client to transfer data
     private static DatagramPacket waittrans(DatagramSocket dsocket) throws IOException {
-        String s = null;
         byte[] trans = new byte[4];
         DatagramPacket dtrans = new DatagramPacket(trans, trans.length);
         dsocket.receive(dtrans);
         return dtrans;
     }
 
+    // send back client data to string upper
     private static void sendUpperACK(DatagramSocket dsocket, DatagramPacket trans) {
         // pack bytes into UDP packet
         String s = new String(trans.getData()).toUpperCase();
@@ -87,6 +89,7 @@ public class server {
         }
     }
 
+    // write string to file
     private static void write(String message) {
         try {
             // delete upload.txt if it exists
@@ -98,14 +101,7 @@ public class server {
         }
     }
 
-    private static int byteArrayToInt(byte[] bytes) {
-        int value = 0;
-        for (byte b : bytes) {
-            value = (value << 8) + (b & 0xFF);
-        }
-        return value;
-    }
-
+    // convert int to byte array
     public static byte[] intToByteArray(int value) {
         return new byte[] {
                 (byte)(value >>> 24),

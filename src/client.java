@@ -4,11 +4,12 @@
 
 import java.io.IOException;
 import java.net.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 @SuppressWarnings("SpellCheckingInspection")
 public class client {
@@ -57,13 +58,13 @@ public class client {
             System.out.println("Creating transfer socket on port: " + r_port);
 
             // iterate through file on socket
-            for (int i = 0; i < list.size(); i++) {
+            for (String s : list) {
                 try {
-                    System.out.println("Sending packet: " + list.get(i));
-                    byte[] send = list.get(i).getBytes();
-                    byte[] receive = list.get(i).toUpperCase().getBytes();
+                    System.out.println("Sending packet: " + s);
+                    byte[] send = s.getBytes();
+                    byte[] receive = s.toUpperCase().getBytes();
                     send(dstrans, send, serverip, r_port);
-                    String s = waitack(dstrans, receive);
+                    waitack(dstrans, receive);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -82,7 +83,6 @@ public class client {
     private static void send(DatagramSocket dsocket, byte[] send, InetAddress serverip, int port) {
         // pack bytes into UDP packet
         DatagramPacket dsend = new DatagramPacket(send, send.length, serverip, port);
-        String s = new String(send);
 
         // send over port and serverip
         try {
@@ -92,19 +92,19 @@ public class client {
         }
     }
 
-    private static String waitack(DatagramSocket dsocket, byte[] response) throws IOException {
+    private static void waitack(DatagramSocket dsocket, byte[] response) throws IOException {
         byte[] ack = new byte[response.length];
         DatagramPacket dack = new DatagramPacket(ack, ack.length);
-        String test = null;
+        String test;
         String resp = new String(response);
 
+        // wait for server ACK
         do {
             System.out.println("Waiting for ACK...");
             dsocket.receive(dack);
             test = new String(dack.getData()).toUpperCase();
         } while (!(Objects.equals(test, resp)));
         System.out.println("Received ACK.");
-        return test;
     }
 
     private static List<String> convert(Path path) { // Convert file to List of 4 char 8-bit ASCII
@@ -129,6 +129,7 @@ public class client {
         return list;
     }
 
+    // convert byte array to int
     private static int byteArrayToInt(byte[] bytes) {
         int value = 0;
         for (byte b : bytes) {
