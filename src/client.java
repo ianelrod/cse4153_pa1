@@ -25,7 +25,7 @@ public class client {
             e.printStackTrace();
         }
         int n_port = Integer.parseInt(args[1]);
-        Path path = FileSystems.getDefault().getPath("src",args[2]);
+        Path path = FileSystems.getDefault().getPath(args[2]);    // change later
 
         // get r_port
         int r_port = negotiation(n_port, serverip);
@@ -40,7 +40,15 @@ public class client {
 
             // iterate through file on socket
             for (int i = 0; i < list.size(); i++) {
-                transaction(dsocket, list, serverip, r_port, i);
+                try {
+                    send(dsocket, list, serverip, r_port, i);
+                    byte[] ack = new byte[list.get(i).getBytes().length];
+                    DatagramPacket dack = new DatagramPacket(ack, ack.length);
+                    waitack(dsocket, dack, list.get(i).toUpperCase().getBytes());
+                    System.out.println(Arrays.toString(dack.getData()));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
 
             // send EOF
@@ -49,35 +57,33 @@ public class client {
             try {
                 System.out.println("Sending EOF...");
                 dsocket.send(dend);
-
-                // receive ACK to terminate
-                byte[] term = new byte["ACK".getBytes().length];
-                DatagramPacket dterm = new DatagramPacket(term, term.length);
-                try {
-                    System.out.println("Waiting for ACK...");
-                    dsocket.receive(dterm);
-
-                    String s = new String(dterm.getData());
-                    if (Objects.equals(s, "ACK")) {
-                        System.out.println("Received ACK, terminating.");
-                        dsocket.close();
-                    }
-                    else {
-                        System.out.println("Did not receive ACK to terminate.");
-                    }
-                } catch (IOException e) {
-                    System.out.println("Could not receive ACK.");
-                    e.printStackTrace();
-                }
+                byte[] ack = new byte["ACK".getBytes().length];
+                DatagramPacket dack = new DatagramPacket(ack, ack.length);
+                waitack(dsocket, dack, "ACK".getBytes());
             } catch (IOException e) {
                 System.out.println("Could not send EOF.");
                 e.printStackTrace();
             }
+            dsocket.close();
         } catch (SocketException e) {
             System.out.println("Could not create socket.");
             e.printStackTrace();
         }
     }
+
+    private static void waitack(DatagramSocket dsocket, DatagramPacket dack, byte[] response) throws IOException {
+        do {
+            dsocket.receive(dack);
+            System.out.println("Waiting for ACK...");
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        } while (!Arrays.equals(dack.getData(), response));
+        System.out.println("Received ACK.");
+    }
+
     static int negotiation(int n_port, InetAddress serverip) {
         int r_port = 0;
 
@@ -88,38 +94,28 @@ public class client {
 
             // send handshake
             try {
-                byte[] send = HexFormat.of().parseHex("000004E0");
+                byte[] send = new byte[] {0x00,0x00,0x04,(byte)0xE0}; // HexFormat.of().parseHex("000004E0");
                 DatagramPacket dsend = new DatagramPacket(send, send.length, serverip, n_port);
-                byte[] receive = HexFormat.of().parseHex("000004E0");
+                byte[] receive = new byte[Integer.BYTES];
                 DatagramPacket dreceive = new DatagramPacket(receive, receive.length);
 
-                while (Arrays.toString(dreceive.getData()).equals("[0, 0, 4, -32]")) {
+                // receive r_port packet between 1024 and 65535 from server
+                do {
                     System.out.println("Sending handshake: 1248");
                     dsocket.send(dsend);
-
-                    // receive r_port packet between 1024 and 65535 from server
+                    System.out.println("Waiting for port...");
+                    dsocket.receive(dreceive);
+                    // dreceive.setData(HexFormat.of().parseHex("00001000"));  // change later
                     try {
-                        dsocket.receive(dreceive);
-                        dreceive.setData(HexFormat.of().parseHex("00001000"));              // change later
-                        if (!Arrays.toString(dreceive.getData()).equals("[0, 0, 4, -32]")) {
-                            String s = new String(dreceive.getData());
-                            System.out.println("Received random port: " + s);
-
-                            // map packet to r_port
-                            for (byte b : dreceive.getData()) {
-                                r_port = (r_port << 8) + (b & 0xFF);
-                            }
-                        }
-                    } catch (IOException e) {
-                        System.out.println("Could not receive port.");
-                        e.printStackTrace();
-                    }
-                    try {
-                        Thread.sleep(2000);
+                        Thread.sleep(1000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                }
+                    for (byte b : dreceive.getData()) {
+                        r_port = (r_port << 8) + (b & 0xFF);
+                    }
+                } while (!((r_port > 1024) && (r_port < 65535) && (r_port != 1248)));
+                System.out.println("Received random port: " + r_port);
             } catch (IOException e) {
                 System.out.println("Could not send handshake.");
                 e.printStackTrace();
@@ -154,7 +150,8 @@ public class client {
 
         return list;
     }
-    static void transaction(DatagramSocket dsocket, List<String> list, InetAddress serverip, int r_port, int count) {
+
+    static void send(DatagramSocket dsocket, List<String> list, InetAddress serverip, int r_port, int count) {
         // pack 4 characters into UDP packet
         byte[] send = list.get(count).getBytes(StandardCharsets.UTF_8);
         DatagramPacket dsend = new DatagramPacket(send, send.length, serverip, r_port);
