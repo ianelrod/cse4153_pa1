@@ -30,20 +30,20 @@ public class client {
 
         // get r_port
         try {
-            DatagramSocket dneg = new DatagramSocket();
+            DatagramSocket dsneg = new DatagramSocket();
             byte[] send = new byte[] {0x00,0x00,0x04,(byte)0xE0};
             System.out.println("Sending handshake...");
-            send(dneg, send, serverip, n_port);
+            send(dsneg, send, serverip, n_port);
             try {
                 byte[] receive = new byte[Integer.BYTES];
                 DatagramPacket dreceive = new DatagramPacket(receive,receive.length);
-                dneg.receive(dreceive);
+                dsneg.receive(dreceive);
                 r_port = byteArrayToInt(dreceive.getData());
             } catch (IOException e) {
                 e.printStackTrace();
             }
             System.out.println("Received random port: " + r_port);
-            dneg.close();
+            dsneg.close();
         } catch (SocketException e) {
             e.printStackTrace();
         }
@@ -53,35 +53,27 @@ public class client {
 
         // create random port socket
         try {
-            DatagramSocket dtrans = new DatagramSocket();
-            System.out.println("Creating transfer socket on port: " + dtrans.getPort());
+            DatagramSocket dstrans = new DatagramSocket();
+            System.out.println("Creating transfer socket on port: " + r_port);
 
             // iterate through file on socket
             for (int i = 0; i < list.size(); i++) {
                 try {
                     System.out.println("Sending packet: " + list.get(i));
                     byte[] send = list.get(i).getBytes();
-                    byte[] receive = new byte[list.get(i).toUpperCase().getBytes().length];
-                    send(dtrans, send, serverip, r_port);
-                    String s = waitack(dtrans, receive);
-                    System.out.println(s);
+                    byte[] receive = list.get(i).toUpperCase().getBytes();
+                    send(dstrans, send, serverip, r_port);
+                    String s = waitack(dstrans, receive);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
 
             // send EOF
-            try {
-                byte[] send = new byte[] {0x03};
-                byte[] receive = new byte["ACK".getBytes().length];
-                System.out.println("Sending EOF...");
-                send(dtrans, send, serverip, r_port);
-                waitack(dtrans, receive);
-            } catch (IOException e) {
-                System.out.println("Could not send EOF.");
-                e.printStackTrace();
-            }
-            dtrans.close();
+            byte[] send = new byte[] {0x03};
+            System.out.println("Sending EOF...");
+            send(dstrans, send, serverip, r_port);
+            dstrans.close();
         } catch (SocketException e) {
             e.printStackTrace();
         }
@@ -94,10 +86,8 @@ public class client {
 
         // send over port and serverip
         try {
-            System.out.println("Sending packet: " + s);
             dsocket.send(dsend);
         } catch (IOException e) {
-            System.out.println("Could not send packet.");
             e.printStackTrace();
         }
     }
@@ -105,17 +95,16 @@ public class client {
     private static String waitack(DatagramSocket dsocket, byte[] response) throws IOException {
         byte[] ack = new byte[response.length];
         DatagramPacket dack = new DatagramPacket(ack, ack.length);
+        String test = null;
+        String resp = new String(response);
+
         do {
-            dsocket.receive(dack);
             System.out.println("Waiting for ACK...");
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        } while (!Arrays.equals(dack.getData(), response));
+            dsocket.receive(dack);
+            test = new String(dack.getData()).toUpperCase();
+        } while (!(Objects.equals(test, resp)));
         System.out.println("Received ACK.");
-        return new String(dack.getData());
+        return test;
     }
 
     private static List<String> convert(Path path) { // Convert file to List of 4 char 8-bit ASCII

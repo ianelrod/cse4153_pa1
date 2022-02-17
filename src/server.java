@@ -24,31 +24,34 @@ public class server {
             byte[] ack = new byte[Integer.BYTES];
             System.out.println("Waiting for client handshake...");
             DatagramPacket dpnegrec = new DatagramPacket(ack, ack.length);
-            do {
-                dsneg.receive(dpnegrec);
-            } while (byteArrayToInt(dpnegrec.getData()) != 1248);
+            dsneg.receive(dpnegrec);
             System.out.println("Received client handshake.");
             DatagramPacket dpnegsend = new DatagramPacket(intToByteArray(r_port), intToByteArray(r_port).length, dpnegrec.getAddress(), dpnegrec.getPort());
-            send(dsneg, dpnegsend);
+            dsneg.send(dpnegsend);
             System.out.println("Random port chosen: " + r_port);
+            dsneg.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         // iterate through file on socket
-        byte[] end = new byte[] {0x03};
+        byte[] end = new byte[] {0x03,0x00,0x00,0x00};
         try {
             System.out.println("Creating listening socket on random port: " + r_port);
             DatagramSocket dstrans = new DatagramSocket(r_port);
             DatagramPacket dptrans;
             do {
                 dptrans = waittrans(dstrans);
-                send(dstrans, dptrans);
-                String chars = new String(dptrans.getData());
-                System.out.println("Received chars: " + chars);
-                message = message.concat(chars);
+                if (dptrans.getData() != end) {
+                    String chars = new String(dptrans.getData());
+                    System.out.println("Received chars: " + chars);
+                    message = message.concat(chars);
+                    sendUpperACK(dstrans, dptrans);
+                }
             } while (!Arrays.equals(dptrans.getData(), end));
+            System.out.println("Writing message to file:\n" + message);
             write(message);
+            dstrans.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -63,13 +66,13 @@ public class server {
 
     private static DatagramPacket waittrans(DatagramSocket dsocket) throws IOException {
         String s = null;
-        byte[] trans = new byte[8];
+        byte[] trans = new byte[4];
         DatagramPacket dtrans = new DatagramPacket(trans, trans.length);
         dsocket.receive(dtrans);
         return dtrans;
     }
 
-    private static void send(DatagramSocket dsocket, DatagramPacket trans) {
+    private static void sendUpperACK(DatagramSocket dsocket, DatagramPacket trans) {
         // pack bytes into UDP packet
         String s = new String(trans.getData()).toUpperCase();
         DatagramPacket dsend = new DatagramPacket(s.getBytes(), s.getBytes().length, trans.getAddress(), trans.getPort());
@@ -89,7 +92,7 @@ public class server {
             // delete upload.txt if it exists
             Files.deleteIfExists(FileSystems.getDefault().getPath("upload.txt"));
             // write to upload.txt
-            Files.write(FileSystems.getDefault().getPath("upload.txt"), message.getBytes());
+            Files.write(FileSystems.getDefault().getPath("upload.txt"), message.trim().getBytes());
         } catch (IOException e) {
             e.printStackTrace();
         }
