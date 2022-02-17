@@ -32,6 +32,7 @@ public class client {
         try {
             DatagramSocket dneg = new DatagramSocket();
             byte[] send = new byte[] {0x00,0x00,0x04,(byte)0xE0};
+            System.out.println("Sending handshake...");
             send(dneg, send, serverip, n_port);
             try {
                 byte[] receive = new byte[Integer.BYTES];
@@ -41,6 +42,7 @@ public class client {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            System.out.println("Received random port: " + r_port);
             dneg.close();
         } catch (SocketException e) {
             e.printStackTrace();
@@ -85,7 +87,7 @@ public class client {
         }
     }
 
-    static void send(DatagramSocket dsocket, byte[] send, InetAddress serverip, int port) {
+    private static void send(DatagramSocket dsocket, byte[] send, InetAddress serverip, int port) {
         // pack bytes into UDP packet
         DatagramPacket dsend = new DatagramPacket(send, send.length, serverip, port);
         String s = new String(send);
@@ -116,7 +118,7 @@ public class client {
         return new String(dack.getData());
     }
 
-    static List<String> convert(Path path) { // Convert file to List of 4 char 8-bit ASCII
+    private static List<String> convert(Path path) { // Convert file to List of 4 char 8-bit ASCII
         List<String> list = new ArrayList<>();
         String message = null;
 
@@ -138,7 +140,7 @@ public class client {
         return list;
     }
 
-    static int byteArrayToInt(byte[] bytes) {
+    private static int byteArrayToInt(byte[] bytes) {
         int value = 0;
         for (byte b : bytes) {
             value = (value << 8) + (b & 0xFF);
