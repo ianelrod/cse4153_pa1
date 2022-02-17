@@ -36,7 +36,7 @@ public class client {
         // create random port socket
         try {
             System.out.println("Creating socket on random port: " + r_port);
-            DatagramSocket dsocket = new DatagramSocket(r_port, serverip);
+            DatagramSocket dsocket = new DatagramSocket();
 
             // iterate through file on socket
             for (int i = 0; i < list.size(); i++) {
@@ -90,7 +90,7 @@ public class client {
         // create socket on port
         try {
             System.out.println("Creating socket on negotiation port: " + n_port);
-            DatagramSocket dsocket = new DatagramSocket(n_port, serverip);
+            DatagramSocket dsocket = new DatagramSocket();
 
             // send handshake
             try {
